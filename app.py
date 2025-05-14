@@ -1,13 +1,46 @@
 import streamlit as st
-import requests
+from data_loader import get_stock_data, get_crypto_data
+from analyzer import evaluate_assets
+import plotly.graph_objects as go
 
-st.subheader("🔌 Teste de conexão com a internet")
+st.title("📈 Top 10 Investimentos - Ações BR & Criptomoedas")
 
-try:
-    r = requests.get("https://finance.yahoo.com", timeout=5)
-    if r.status_code == 200:
-        st.success("✅ Conexão com Yahoo Finance OK.")
+br_tickers = st.text_input("Digite os tickers das ações brasileiras (ex: PETR4, VALE3):", "PETR4,VALE3")
+crypto_tickers = st.text_input("Digite os tickers das criptomoedas (ex: BTC, ETH):", "BTC,ETH")
+
+if st.button("Analisar"):
+    tickers_br = [t.strip().upper() for t in br_tickers.split(",")]
+    tickers_crypto = [c.strip().upper() for c in crypto_tickers.split(",")]
+
+    stock_data = get_stock_data(tickers_br)
+    crypto_data = get_crypto_data(tickers_crypto)
+
+    st.subheader("🔎 Dados carregados (pré-merge)")
+    if not stock_data.empty:
+        st.write("📘 Ações carregadas:")
+        st.dataframe(stock_data.tail())
     else:
-        st.warning(f"⚠️ Conexão feita, mas status: {r.status_code}")
-except Exception as e:
-    st.error(f"❌ Erro ao conectar: {e}")
+        st.warning("⚠️ Nenhuma ação foi carregada.")
+
+    if not crypto_data.empty:
+        st.write("💰 Criptomoedas carregadas:")
+        st.dataframe(crypto_data.tail())
+    else:
+        st.warning("⚠️ Nenhuma cripto foi carregada.")
+
+    full_data = stock_data.join(crypto_data, how='outer')
+
+    if full_data.empty:
+        st.error("❌ Nenhum dado final disponível para análise.")
+
+    else:
+        st.line_chart(full_data)
+
+        st.subheader("📊 Top 10 Investimentos (Simulação Monte Carlo)")
+        ranking = evaluate_assets(full_data)
+        st.dataframe(ranking)
+
+        fig = go.Figure()
+        for _, row in ranking.iterrows():
+            fig.add_trace(go.Bar(name=row["Ticker"], x=["Expected Return"], y=[row["Expected Return"]]))
+        st.plotly_chart(fig)
