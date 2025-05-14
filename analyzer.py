@@ -10,6 +10,6 @@ def evaluate_assets(price_df):
         risk = simulations[:, -1].std()
         sharpe = expected_return / risk if risk != 0 else 0
         results.append((ticker, expected_return, risk, sharpe))
-    
+
     ranked = sorted(results, key=lambda x: x[3], reverse=True)
     return pd.DataFrame(ranked, columns=["Ticker", "Expected Return", "Risk", "Sharpe"]).head(10)
